@@ -1,58 +1,57 @@
 const express = require('express');
-const cors = require('cors');
 const session = require('express-session');
+const bodyParser = require('body-parser');
+const exphbs = require('express-handlebars');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-//middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(
-  session({
-    secret: 'not-secret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: {}
-  })
-);
+//in memory state
+const users = [];
+const comments = [];
 
-//in-memory storage
-app.locals.users = [];
-app.locals.comments = [];
+//view engine
+app.engine('hbs', exphbs.engine({ extname: '.hbs' }));
+app.set('view engine', 'hbs');
+app.set('views', path.join(__dirname, 'views'));
+
+//middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({ secret: 'not-secret', resave: false, saveUninitialized: true }));
+app.use((req, res, next) => {res.locals.user = req.session.user; 
+next();});
+
 
 //routes
-
-//root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    message: 'Wild West Forum API',
-    version: '1.0.0',
-    endpoints: {
-      users: '/api/users',
-      comments: '/api/comments'
-    }
-  });
+app.get('/', (req, res) => res.render('home'));
+app.get('/register', (req, res) => res.render('register'));
+app.post('/register', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password || users.find(u => u.username === username))
+    return res.render('register', { error: 'Invalid or taken username' });
+  users.push({ username, password });
+  res.redirect('/login');
+});
+app.get('/login', (req, res) => res.render('login'));
+app.post('/login', (req, res) => {
+  const user = users.find(u => u.username === req.body.username && u.password === req.body.password);
+  if (!user) return res.render('login', { error: 'Invalid credentials' });
+  req.session.user = user.username;
+  res.redirect('/comments');
+});
+app.post('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
+app.get('/comments', (req, res) => res.render('comments', { comments, user: req.session.user }));
+app.get('/comment/new', (req, res) => {
+  if (!req.session.user) return res.render('login', { error: 'Please log in first' });
+  res.render('new-comment');
+});
+app.post('/comment', (req, res) => {
+  if (!req.session.user) return res.render('login', { error: 'Please log in' });
+  if (!req.body.text?.trim()) return res.render('new-comment', { error: 'Comment cannot be empty' });
+  comments.push({ author: req.session.user, text: req.body.text, createdAt: new Date() });
+  res.redirect('/comments');
 });
 
-//404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Endpoint not found',
-    message: `The endpoint ${req.method} ${req.originalUrl} does not exist`
-  });
-});
-
-//error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    error: 'Internal server error',
-    message: 'Something went wrong on the server'
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`Wild West Forum running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

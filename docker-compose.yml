@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  node:
+    build: ./node-app
+    container_name: wildwest_node
+    environment:
+      - PORT=3000
+    expose:
+      - "3000"
+  nginx:
+    build: ./nginx
+    container_name: wildwest_nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - node
