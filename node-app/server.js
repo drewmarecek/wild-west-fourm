@@ -1,8 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const userRoutes = require('./routes/users');
-const commentRoutes = require('./routes/comments');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -25,8 +23,6 @@ app.locals.users = [];
 app.locals.comments = [];
 
 //routes
-app.use('/api/users', userRoutes);
-app.use('/api/comments', commentRoutes);
 
 //root endpoint
 app.get('/', (req, res) => {
