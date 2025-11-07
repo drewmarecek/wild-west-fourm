@@ -1,0 +1,15 @@
+<nav>
+  <a href="/">Home</a> |
+  <a href="/comments">Comments</a> |
+
+  {{#if user}}
+    Logged in as {{user}} |
+    <form method="POST" action="/logout" style="display:inline">
+      <button>Logout</button>
+    </form>
+  {{else}}
+    <a href="/register">Register</a> |
+    <a href="/login">Login</a>
+  {{/if}}
+</nav>
+<hr>

@@ -1,0 +1,8 @@
+<h1>Welcome to the Wild West Forum!</h1>
+
+{{#if user}}
+  <p>Hello, {{user}}! Go check out the <a href="/comments">comments</a> or post a <a href="/comment/new">new comment</a>.</p>
+{{else}}
+  <p>Please <a href="/login">login</a> or <a href="/register">register</a> to join the discussion.</p>
+{{/if}}
+

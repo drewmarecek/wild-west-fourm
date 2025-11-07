@@ -1,0 +1,20 @@
+<h1>All Comments</h1>
+
+{{#if comments.length}}
+  <ul>
+    {{#each comments}}
+      <li>
+        <strong>{{this.author}}</strong> ({{this.createdAt}}): {{{this.text}}}
+      </li>
+    {{/each}}
+  </ul>
+{{else}}
+  <p>No comments yet. Be the first to post!</p>
+{{/if}}
+
+{{#if user}}
+  <p><a href="/comment/new">Post a new comment</a></p>
+{{else}}
+  <p><a href="/login">Login</a> to post a comment.</p>
+{{/if}}
+
