@@ -1,0 +1,133 @@
+/* === Reset & basics === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', sans-serif;
+}
+
+body {
+  background-color: #fafafa;
+  color: #262626;
+  line-height: 1.5;
+}
+
+/* === Navigation bar === */
+nav {
+  background-color: #ffffff;
+  border-bottom: 1px solid #dbdbdb;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+nav a {
+  text-decoration: none;
+  color: #262626;
+  font-weight: bold;
+  margin-right: 15px;
+}
+
+nav a:hover {
+  color: #3897f0;
+}
+
+nav form button {
+  background: none;
+  border: none;
+  color: #262626;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+nav form button:hover {
+  color: #ed4956;
+}
+
+/* === Main content === */
+main {
+  max-width: 600px;
+  margin: 30px auto;
+  padding: 0 15px;
+}
+
+/* === Forms === */
+form {
+  background-color: #fff;
+  padding: 20px;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #dbdbdb;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+button {
+  background-color: #3897f0;
+  color: #fff;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background-color: #2e76c3;
+}
+
+/* === Comments === */
+.comment-card {
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.comment-author {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #262626;
+}
+
+.comment-date {
+  font-size: 0.8em;
+  color: #8e8e8e;
+  margin-bottom: 10px;
+}
+
+.comment-text {
+  color: #262626;
+}
+
+/* === Footer === */
+footer {
+  text-align: center;
+  padding: 20px;
+  color: #8e8e8e;
+  font-size: 0.9em;
+}
+
+/* === Responsive === */
+@media (max-width: 640px) {
+  main {
+    padding: 0 10px;
+  }
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
