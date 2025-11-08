@@ -18,7 +18,7 @@ git clone https://github.com/YOURUSERNAME/wild-west-forum.git
 cd wild-west-forum
 docker-compose up --build
 
-In a web browser, go to: http://localhost:7823
+Then, in a web browser, go to: http://localhost:7823
 
 Bugs:
 No known errors.
