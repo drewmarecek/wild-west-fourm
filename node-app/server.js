@@ -23,7 +23,6 @@ app.use(session({ secret: 'not-secret', resave: false, saveUninitialized: true }
 app.use((req, res, next) => {res.locals.user = req.session.user; 
 next();});
 
-
 //routes
 app.get('/', (req, res) => res.render('home'));
 app.get('/register', (req, res) => res.render('register'));
@@ -54,4 +53,5 @@ app.post('/comment', (req, res) => {
   res.redirect('/comments');
 });
 
+//start server on PORT
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
