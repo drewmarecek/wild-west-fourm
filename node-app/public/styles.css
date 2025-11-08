@@ -1,133 +1,83 @@
-/* === Reset & basics === */
-* {
+/* Wood background */
+body {
+  background-image: url('/images/wood.avif');
+  background-size: cover;         /* fill the whole page */
+  background-repeat: no-repeat;
+  background-attachment: fixed;   /* keeps the wood in place when scrolling */
+  color: #F5DEB3;                 /* light brown text for readability */
+  font-family: 'Georgia', 'Times New Roman', serif;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
-  font-family: 'Arial', sans-serif;
 }
 
-body {
-  background-color: #fafafa;
-  color: #262626;
-  line-height: 1.5;
-}
-
-/* === Navigation bar === */
+/* Navigation bar on top with semi-transparent overlay */
 nav {
-  background-color: #ffffff;
-  border-bottom: 1px solid #dbdbdb;
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  background-color: rgba(139,69,19,0.8); /* semi-transparent dark brown */
+  padding: 10px;
+  text-align: center;
 }
 
 nav a {
+  color: #FFFACD; /* light yellow-ish color for better contrast */
   text-decoration: none;
-  color: #262626;
-  font-weight: bold;
-  margin-right: 15px;
+  margin: 0 10px;
+  font-weight: bold; /* makes links more readable */
 }
 
 nav a:hover {
-  color: #3897f0;
+  color: #FFD700; /* golden yellow on hover for emphasis */
+  text-decoration: underline;
 }
 
-nav form button {
-  background: none;
-  border: none;
-  color: #262626;
-  font-weight: bold;
-  cursor: pointer;
+/* Links in main content (if any) */
+main a {
+  color: #FFFACD;
+  text-decoration: underline;
 }
 
-nav form button:hover {
-  color: #ed4956;
+main a:hover {
+  color: #FFD700;
 }
 
-/* === Main content === */
+/* Main content container with semi-transparent background for readability */
 main {
-  max-width: 600px;
-  margin: 30px auto;
-  padding: 0 15px;
-}
-
-/* === Forms === */
-form {
-  background-color: #fff;
+  background-color: rgba(160, 82, 45, 0.7); /* slightly see-through brown */
   padding: 20px;
-  border: 1px solid #dbdbdb;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
+  margin: 20px auto;
+  max-width: 900px;
+  border-radius: 10px;
 }
-
-input[type="text"],
-input[type="password"],
-textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #dbdbdb;
-  border-radius: 4px;
-  margin-bottom: 15px;
-}
-
+/* Buttons */
 button {
-  background-color: #3897f0;
-  color: #fff;
+  background-color: #D2691E;
+  color: #F5DEB3;
   border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
+  padding: 5px 10px;
   cursor: pointer;
-  font-weight: bold;
+  border-radius: 5px;
 }
 
 button:hover {
-  background-color: #2e76c3;
+  background-color: #CD853F;
 }
 
-/* === Comments === */
-.comment-card {
-  background-color: #fff;
-  border: 1px solid #dbdbdb;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+/* Input fields */
+input[type="text"], input[type="password"], textarea {
+  background-color: #FFF8DC;
+  border: 1px solid #A0522D;
+  padding: 5px;
+  color: #8B4513;
 }
 
-.comment-author {
-  font-weight: bold;
-  margin-bottom: 5px;
-  color: #262626;
+/* Comment list */
+ul {
+  list-style-type: none;
+  padding: 0;
 }
 
-.comment-date {
-  font-size: 0.8em;
-  color: #8e8e8e;
+li {
   margin-bottom: 10px;
+  padding: 10px;
+  background-color: rgba(160,82,45,0.8);
+  border-radius: 5px;
 }
-
-.comment-text {
-  color: #262626;
-}
-
-/* === Footer === */
-footer {
-  text-align: center;
-  padding: 20px;
-  color: #8e8e8e;
-  font-size: 0.9em;
-}
-
-/* === Responsive === */
-@media (max-width: 640px) {
-  main {
-    padding: 0 10px;
-  }
-  nav {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
