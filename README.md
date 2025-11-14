@@ -1,5 +1,5 @@
 Drew Marecek
-11/7/25
+11/13/25
 COS 498
 Midterm
 
@@ -14,13 +14,13 @@ Git
 How to run:
 Put the following commands in your terminal to get on the forum:
 
-git clone https://github.com/YOURUSERNAME/wild-west-forum.git
+git clone git@github.com:USERNAME/wild-west-fourm.git
 cd wild-west-forum
 docker compose down
 docker compose build
 docker compose up -d
 
-Then, in a web browser, go to: http://localhost:7823
+Then, in a web browser, go to: http://104.131.168.242:7823
 
 Bugs:
 No known errors.
