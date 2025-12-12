@@ -1,8 +1,4 @@
-const {
-  validatePasswordStrength,
-  hashPassword,
-  verifyPassword
-} = require('./password');
+const argon2 = require("argon2");
 
 function validatePasswordStrength(pw) {
   if (typeof pw !== "string") return "Password required";

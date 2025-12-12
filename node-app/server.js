@@ -3,18 +3,22 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const exphbs = require('express-handlebars');
 const path = require('path');
-const argon2 = require('argon2');
 const Database = require('better-sqlite3');
-const { verifyPassword } = require('./security/password');
+
+const {
+  validatePasswordStrength,
+  hashPassword,
+  verifyPassword
+} = require('./security/password');
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 const db = new Database(path.join(__dirname, 'data', 'app.db'));
 db.pragma('foreign_keys = ON');
+const comments = [];
 
 //view engine
 app.engine('hbs', exphbs.engine({ extname: '.hbs' }));
@@ -96,6 +100,9 @@ app.post('/register', async (req, res) => {
     Date.now(),
     Date.now()
   );
+
+  res.redirect('/login');
+});
 
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', async (req, res) => {
