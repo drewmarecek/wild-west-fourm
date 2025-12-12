@@ -5,6 +5,7 @@ const exphbs = require('express-handlebars');
 const path = require('path');
 const argon2 = require('argon2');
 const Database = require('better-sqlite3');
+const { verifyPassword } = require('./security/password');
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
@@ -43,13 +44,59 @@ function logLoginAttempt(db, { username, ip, success }) {
 //routes
 app.get('/', (req, res) => res.render('home'));
 app.get('/register', (req, res) => res.render('register'));
-app.post('/register', (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password || users.find(u => u.username === username))
-    return res.render('register', { error: 'Invalid or taken username' });
-  users.push({ username, password });
-  res.redirect('/login');
-});
+
+app.post('/register', async (req, res) => {
+  const { username, email, displayName, password } = req.body;
+
+  if (!username || !email || !displayName || !password) {
+    return res.render('register', { error: "All fields are required" });
+  }
+
+  if (username === displayName) {
+    return res.render('register', {
+      error: "Display name must be different from username"
+    });
+  }
+
+  const pwError = validatePasswordStrength(password);
+  if (pwError) {
+    return res.render('register', { error: pwError });
+  }
+
+  const existing = db.prepare(`
+    SELECT 1 FROM users
+    WHERE username = ? OR email = ? OR display_name = ?
+  `).get(username, email, displayName);
+
+  if (existing) {
+    return res.render('register', {
+      error: "Username, email, or display name already taken"
+    });
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  db.prepare(`
+    INSERT INTO users (
+      username,
+      email,
+      display_name,
+      password_hash,
+      failed_login_count,
+      lockout_until,
+      created_at,
+      updated_at
+    )
+    VALUES (?, ?, ?, ?, 0, NULL, ?, ?)
+  `).run(
+    username,
+    email,
+    displayName,
+    passwordHash,
+    Date.now(),
+    Date.now()
+  );
+
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -71,7 +118,7 @@ app.post('/login', async (req, res) => {
   }
 
   //invalid user or wrong password
-  if (!user || !(await argon2.verify(user.password_hash, password))) {
+  if (!user || !(await verifyPassword(user.password_hash, password))) {
 
     if (user) {
       const failedCount = user.failed_login_count + 1;

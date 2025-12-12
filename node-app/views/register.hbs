@@ -5,12 +5,11 @@
 {{/if}}
 
 <form method="POST" action="/register">
-  <label>Username:</label>
-  <input type="text" name="username" required><br><br>
-
-  <label>Password:</label>
-  <input type="password" name="password" required><br><br>
-
+  <input name="username" placeholder="Username" required>
+  <input name="email" type="email" placeholder="Email" required>
+  <input name="displayName" placeholder="Display Name" required>
+  <input name="password" type="password" placeholder="Password" required>
   <button type="submit">Register</button>
 </form>
+
 <p>Already have an account? <a href="/login">Login here</a>.</p>
