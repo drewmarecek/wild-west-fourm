@@ -13,6 +13,7 @@ const {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,12 +63,46 @@ function renderProfile(req, res, extra = {}) {
   return res.render('profile', { user, ...extra });
 }
 
+function generateResetToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 //routes
 app.get('/', (req, res) => res.render('home'));
 app.get('/register', (req, res) => res.render('register'));
 
 app.get('/profile', requireLogin, (req, res) => {
   renderProfile(req, res);
+});
+
+app.get('/forgot-password', (req, res) => {
+  res.render('forgot-password');
+});
+
+app.get('/reset-password', (req, res) => {
+  const { token } = req.query;
+
+  if (!token) {
+    return res.render('login', { error: "Invalid reset link" });
+  }
+
+  const tokenHash = hashResetToken(token);
+
+  const user = db.prepare(`
+    SELECT * FROM users
+    WHERE reset_token_hash = ?
+      AND reset_token_expires_at > ?
+  `).get(tokenHash, Date.now());
+
+  if (!user) {
+    return res.render('login', { error: "Reset link expired or invalid" });
+  }
+
+  res.render('reset-password', { token });
 });
 
 app.post('/profile/password', requireLogin, async (req, res) => {
@@ -220,6 +255,79 @@ app.post('/profile/display-name', requireLogin, (req, res) => {
   req.session.user.displayName = displayName;
 
   res.redirect('/profile');
+});
+
+app.post('/forgot-password', (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.render('forgot-password', { error: "Email required" });
+  }
+
+  const user = db.prepare(`
+    SELECT * FROM users WHERE email = ?
+  `).get(email);
+
+  if (!user) {
+    return res.render('forgot-password', {
+      message: "A reset link has been sent."
+    });
+  }
+
+  const token = generateResetToken();
+  const tokenHash = hashResetToken(token);
+  const expiresAt = Date.now() + (30 * 60 * 1000);
+
+  db.prepare(`
+    UPDATE users
+    SET reset_token_hash = ?, reset_token_expires_at = ?
+    WHERE id = ?
+  `).run(tokenHash, expiresAt, user.id);
+
+  console.log("\n================PASSWORD RESET LINK================");
+  console.log(`http://localhost:3000/reset-password?token=${token}`);
+
+  res.render('forgot-password', {
+    message: "A reset link has been sent."
+  });
+});
+
+app.post('/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.render('login', { error: "Invalid request" });
+  }
+
+  const pwError = validatePasswordStrength(password);
+  if (pwError) {
+    return res.render('reset-password', { error: pwError, token });
+  }
+
+  const tokenHash = hashResetToken(token);
+
+  const user = db.prepare(`
+    SELECT * FROM users
+    WHERE reset_token_hash = ?
+      AND reset_token_expires_at > ?
+  `).get(tokenHash, Date.now());
+
+  if (!user) {
+    return res.render('login', { error: "Reset link expired or invalid" });
+  }
+
+  const newHash = await hashPassword(password);
+
+  db.prepare(`
+    UPDATE users
+    SET password_hash = ?,
+        reset_token_hash = NULL,
+        reset_token_expires_at = NULL,
+        updated_at = ?
+    WHERE id = ?
+  `).run(newHash, Date.now(), user.id);
+
+  res.redirect('/login');
 });
 
 app.get('/login', (req, res) => res.render('login'));
