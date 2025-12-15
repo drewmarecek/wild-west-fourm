@@ -45,9 +45,60 @@ function logLoginAttempt(db, { username, ip, success }) {
   );
 }
 
+function requireLogin(req, res, next) {
+  if (!req.session.user) {
+    return res.render('login', { error: "Please log in first" });
+  }
+  next();
+}
+
+function renderProfile(req, res, extra = {}) {
+  const user = db.prepare(`
+    SELECT username, email, display_name
+    FROM users
+    WHERE id = ?
+  `).get(req.session.user.id);
+
+  return res.render('profile', { user, ...extra });
+}
+
 //routes
 app.get('/', (req, res) => res.render('home'));
 app.get('/register', (req, res) => res.render('register'));
+
+app.get('/profile', requireLogin, (req, res) => {
+  renderProfile(req, res);
+});
+
+app.post('/profile/password', requireLogin, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return renderProfile(req, res, { error: "All password fields required" });
+  }
+
+  const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.session.user.id);
+
+  const valid = await verifyPassword(user.password_hash, currentPassword);
+  if (!valid) {
+    return renderProfile(req, res, { error: "Current password incorrect" });
+  }
+
+  const pwError = validatePasswordStrength(newPassword);
+  if (pwError) {
+    return renderProfile(req, res, { error: pwError });
+  }
+
+  const newHash = await hashPassword(newPassword);
+
+  db.prepare(`
+    UPDATE users
+    SET password_hash = ?, updated_at = ?
+    WHERE id = ?
+  `).run(newHash, Date.now(), user.id);
+
+  req.session.destroy(() => res.redirect('/login'));
+});
 
 app.post('/register', async (req, res) => {
   const { username, email, displayName, password } = req.body;
@@ -102,6 +153,73 @@ app.post('/register', async (req, res) => {
   );
 
   res.redirect('/login');
+});
+
+app.post('/profile/email', requireLogin, async (req, res) => {
+  const { email, currentPassword } = req.body;
+
+  if (!email || !currentPassword) {
+    return renderProfile(req, res, { error: "Email and password required" });
+  }
+
+  const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.session.user.id);
+
+  const valid = await verifyPassword(user.password_hash, currentPassword);
+  if (!valid) {
+    return renderProfile(req, res, { error: "Current password incorrect" });
+  }
+
+  const taken = db.prepare(`SELECT 1 FROM users WHERE email = ? AND id != ?`).get(email, user.id);
+  if (taken) {
+    return renderProfile(req, res, { error: "Email already in use" });
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET email = ?, updated_at = ?
+    WHERE id = ?
+  `).run(email, Date.now(), user.id);
+
+  return res.redirect('/profile');
+});
+
+app.post('/profile/display-name', requireLogin, (req, res) => {
+  const { displayName } = req.body;
+
+  if (!displayName) {
+    return renderProfile(req, res, { error: "Display name required" });
+  }
+
+  if (displayName === req.session.user.username) {
+    return renderProfile(req, res, { error: "Display name must differ from username" });
+  }
+
+  const taken = db.prepare(`
+    SELECT 1 FROM users WHERE display_name = ? AND id != ?
+  `).get(displayName, req.session.user.id);
+
+  if (taken) {
+    return renderProfile(req, res, { error: "Display name already taken" });
+  }
+
+  db.prepare(`
+    UPDATE users
+    SET display_name = ?, updated_at = ?
+    WHERE id = ?
+  `).run(displayName, Date.now(), req.session.user.id);
+
+  try {
+    db.prepare(`
+      UPDATE comments
+      SET display_name = ?
+      WHERE user_id = ?
+    `).run(displayName, req.session.user.id);
+  } catch (e) {
+  }
+
+  req.session.user.displayName = displayName;
+
+  res.redirect('/profile');
 });
 
 app.get('/login', (req, res) => res.render('login'));

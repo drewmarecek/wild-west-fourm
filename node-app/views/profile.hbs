@@ -1,0 +1,39 @@
+<h1>Your Profile</h1>
+
+{{#if error}}
+  <p style="color:red">{{error}}</p>
+{{/if}}
+
+{{#if success}}
+  <p style="color:green">{{success}}</p>
+{{/if}}
+
+<p><strong>Username:</strong> {{user.username}}</p>
+<p><strong>Email:</strong> {{user.email}}</p>
+<p><strong>Display Name:</strong> {{user.display_name}}</p>
+
+<hr>
+
+<h2>Change Password</h2>
+<form method="POST" action="/profile/password">
+  <input type="password" name="currentPassword" placeholder="Current password" required>
+  <input type="password" name="newPassword" placeholder="New password" required>
+  <button type="submit">Change Password</button>
+</form>
+
+<hr>
+
+<h2>Change Email</h2>
+<form method="POST" action="/profile/email">
+  <input type="email" name="email" placeholder="New email" required>
+  <input type="password" name="currentPassword" placeholder="Current password" required>
+  <button type="submit">Change Email</button>
+</form>
+
+<hr>
+
+<h2>Change Display Name</h2>
+<form method="POST" action="/profile/display-name">
+  <input name="displayName" placeholder="New display name" required>
+  <button type="submit">Change Display Name</button>
+</form>
