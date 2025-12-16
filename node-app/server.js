@@ -21,14 +21,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const db = new Database(path.join(__dirname, 'data', 'app.db'));
 db.pragma('foreign_keys = ON');
-const comments = [];
 const server = http.createServer(app);
 const io = new Server(server);
 
 //view engine
-app.engine('hbs', exphbs.engine({ extname: '.hbs' }));
 app.set('view engine', 'hbs');
 app.set('views', path.join(__dirname, 'views'));
+app.engine('hbs', exphbs.engine({
+  extname: '.hbs',
+  helpers: {
+  eq: (a, b) => a === b,
+  increment: v => v + 1,
+  decrement: v => v - 1,
+  strlen: s => s.length,
+  gt: (a, b) => a > b,
+  substring: (s, a, b) => s.substring(a, b)
+  }
+}));
 
 //middleware
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -41,19 +50,6 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 app.use((req, res, next) => {res.locals.user = req.session.user; 
 next();});
-
-//helper function to ensure every login attempt is loggged
-function logLoginAttempt(db, { username, ip, success }) {
-  db.prepare(`
-    INSERT INTO login_attempts (username, ip, attempted_at, success)
-    VALUES (?, ?, ?, ?)
-  `).run(
-    username,
-    ip,
-    Date.now(),
-    success ? 1 : 0
-  );
-}
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -78,6 +74,19 @@ function generateResetToken() {
 
 function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+//login attempt
+function logLoginAttempt(db, { username, ip, success }) {
+  db.prepare(`
+    INSERT INTO login_attempts (username, ip, attempted_at, success)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    username,
+    ip,
+    Date.now(),
+    success ? 1 : 0
+  );
 }
 
 //routes
@@ -437,17 +446,19 @@ app.get('/chat', requireLogin, (req, res) => {
   res.render('chat');
 });
 
-//io routes
-io.on("connection", (socket) => {
-  const user = socket.request.session.user;
+app.get('/user/:id/comments', (req, res) => {
+  const comments = db.prepare(`
+    SELECT *
+    FROM comments
+    WHERE user_id = ?
+      AND deleted_at IS NULL
+    ORDER BY created_at DESC
+  `).all(req.params.id);
 
-  console.log(`User connected to chat: ${user.displayName}`);
-
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${user.displayName}`);
-  });
+  res.render('user-comments', { comments });
 });
 
+//io routes
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
@@ -462,6 +473,16 @@ io.use((socket, next) => {
   next();
 });
 
+io.on("connection", (socket) => {
+  const user = socket.request.session.user;
+
+  console.log(`User connected to chat: ${user.displayName}`);
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${user.displayName}`);
+  });
+});
+
 app.get('/api/chat/history', requireLogin, (req, res) => {
   const messages = db.prepare(`
     SELECT id, display_name, message, created_at
@@ -474,18 +495,103 @@ app.get('/api/chat/history', requireLogin, (req, res) => {
 });
 
 app.post('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
-app.get('/comments', (req, res) => res.render('comments', { comments, user: req.session.user }));
+
+app.get('/comments', (req, res) => {
+  const pageSize = 10;
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const offset = (page - 1) * pageSize;
+
+  const total = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM comments
+    WHERE deleted_at IS NULL
+  `).get().count;
+
+  const comments = db.prepare(`
+    SELECT *
+    FROM comments
+    WHERE deleted_at IS NULL
+    ORDER BY created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(pageSize, offset);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  res.render('comments', {
+    comments,
+    page,
+    totalPages,
+    hasPrev: page > 1,
+    hasNext: page < totalPages
+  });
+});
+
 app.get('/comment/new', (req, res) => {
   if (!req.session.user) return res.render('login', { error: 'Please log in first' });
   res.render('new-comment');
 });
-app.post('/comment', (req, res) => {
-  if (!req.session.user) return res.render('login', { error: 'Please log in' });
-  if (!req.body.text?.trim()) return res.render('new-comment', { error: 'Comment cannot be empty' });
-  comments.push({ author: req.session.user, text: req.body.text, createdAt: new Date() });
+
+app.post('/comment', requireLogin, (req, res) => {
+  const text = req.body.text?.trim();
+
+  if (!text) {
+    return res.render('new-comment', { error: "Comment cannot be empty" });
+  }
+
+  if (text.length > 2000) {
+    return res.render('new-comment', { error: "Comment too long" });
+  }
+
+  db.prepare(`
+    INSERT INTO comments (user_id, display_name, text, created_at)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    req.session.user.id,
+    req.session.user.displayName,
+    text,
+    Date.now()
+  );
+
   res.redirect('/comments');
 });
 
+app.post('/comment/:id/delete', requireLogin, (req, res) => {
+  db.prepare(`
+    UPDATE comments
+    SET deleted_at = ?
+    WHERE id = ? AND user_id = ?
+  `).run(
+    Date.now(),
+    req.params.id,
+    req.session.user.id
+  );
+
+  res.redirect('/comments');
+});
+
+//edit comment
+  app.post('/comment/:id/edit', requireLogin, (req, res) => {
+    const text = req.body.text?.trim();
+
+    if (!text || text.length > 2000) {
+      return res.redirect('/comments');
+    }
+
+  db.prepare(`
+    UPDATE comments
+    SET text = ?, updated_at = ?
+    WHERE id = ? AND user_id = ?
+  `).run(
+    text,
+    Date.now(),
+    req.params.id,
+    req.session.user.id
+  );
+
+    res.redirect('/comments');
+});
+
+//start server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

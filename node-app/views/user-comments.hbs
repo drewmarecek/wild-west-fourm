@@ -1,0 +1,25 @@
+<h1>User Comment History</h1>
+
+{{#if comments.length}}
+  {{#each comments}}
+    <div class="comment-card">
+      <div class="comment-date">
+        {{this.created_at}}
+      </div>
+
+      {{#if (gt (strlen this.text) 200)}}
+        <p>{{substring this.text 0 200}}...</p>
+        <details>
+          <summary>Read more</summary>
+          <p>{{this.text}}</p>
+        </details>
+      {{else}}
+        <p>{{this.text}}</p>
+      {{/if}}
+    </div>
+  {{/each}}
+{{else}}
+  <p>No comments yet.</p>
+{{/if}}
+
+<a href="/comments">← Back to all comments</a>

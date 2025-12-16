@@ -3,9 +3,36 @@
 {{#if comments.length}}
   {{#each comments}}
     <div class="comment-card">
-      <div class="comment-author">{{this.author}}</div>
-      <div class="comment-date">{{this.createdAt}}</div>
-      <div class="comment-text">{{{this.text}}}</div>
+      <div class="comment-author">
+        <a href="/user/{{this.user_id}}/comments">
+          {{this.display_name}}
+        </a>
+      </div>
+
+      <div class="comment-date">
+        {{this.created_at}}
+      </div>
+
+      {{#if (gt (strlen this.text) 200)}}
+        <p>{{substring this.text 0 200}}...</p>
+        <details>
+          <summary>Read more</summary>
+          <p>{{this.text}}</p>
+        </details>
+      {{else}}
+        <p>{{this.text}}</p>
+      {{/if}}
+
+      {{#if (eq ../user.id this.user_id)}}
+        <form method="POST" action="/comment/{{this.id}}/edit">
+          <input name="text" value="{{this.text}}">
+          <button>Edit</button>
+        </form>
+
+        <form method="POST" action="/comment/{{this.id}}/delete">
+          <button>Delete</button>
+        </form>
+      {{/if}}
     </div>
   {{/each}}
 {{else}}
@@ -17,3 +44,15 @@
 {{else}}
   <p><a href="/login">Login</a> to comment.</p>
 {{/if}}
+
+<div class="pagination">
+  {{#if hasPrev}}
+    <a href="/comments?page={{decrement page}}">Previous</a>
+  {{/if}}
+
+  <span>Page {{page}} of {{totalPages}}</span>
+
+  {{#if hasNext}}
+    <a href="/comments?page={{increment page}}">Next</a>
+  {{/if}}
+</div>
