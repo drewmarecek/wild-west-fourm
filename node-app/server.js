@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const exphbs = require('express-handlebars');
 const path = require('path');
 const Database = require('better-sqlite3');
+const http = require('http');
+const { Server } = require('socket.io');
 
 const {
   validatePasswordStrength,
@@ -20,6 +22,8 @@ const PORT = process.env.PORT || 3000;
 const db = new Database(path.join(__dirname, 'data', 'app.db'));
 db.pragma('foreign_keys = ON');
 const comments = [];
+const server = http.createServer(app);
+const io = new Server(server);
 
 //view engine
 app.engine('hbs', exphbs.engine({ extname: '.hbs' }));
@@ -29,7 +33,12 @@ app.set('views', path.join(__dirname, 'views'));
 //middleware
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(session({ secret: 'not-secret', resave: false, saveUninitialized: false }));
+const sessionMiddleware = session({
+  secret: 'not-secret',
+  resave: false,
+  saveUninitialized: false
+});
+app.use(sessionMiddleware);
 app.use((req, res, next) => {res.locals.user = req.session.user; 
 next();});
 
@@ -330,6 +339,37 @@ app.post('/reset-password', async (req, res) => {
   res.redirect('/login');
 });
 
+app.post('/api/chat/message', requireLogin, (req, res) => {
+  const { message } = req.body;
+
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: "Message required" });
+  }
+
+  const chatMessage = {
+    user_id: req.session.user.id,
+    display_name: req.session.user.displayName,
+    message: message.trim(),
+    created_at: Date.now()
+  };
+
+  const result = db.prepare(`
+    INSERT INTO chat_messages (user_id, display_name, message, created_at)
+    VALUES (?, ?, ?, ?)
+  `).run(
+    chatMessage.user_id,
+    chatMessage.display_name,
+    chatMessage.message,
+    chatMessage.created_at
+  );
+
+  chatMessage.id = result.lastInsertRowid;
+
+  io.emit("chat:new", chatMessage);
+
+  res.json({ success: true });
+});
+
 app.get('/login', (req, res) => res.render('login'));
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -393,6 +433,46 @@ app.post('/login', async (req, res) => {
   res.redirect('/comments');
 });
 
+app.get('/chat', requireLogin, (req, res) => {
+  res.render('chat');
+});
+
+//io routes
+io.on("connection", (socket) => {
+  const user = socket.request.session.user;
+
+  console.log(`User connected to chat: ${user.displayName}`);
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${user.displayName}`);
+  });
+});
+
+io.use((socket, next) => {
+  sessionMiddleware(socket.request, {}, next);
+});
+
+io.use((socket, next) => {
+  const session = socket.request.session;
+
+  if (!session || !session.user) {
+    return next(new Error("Not authenticated"));
+  }
+
+  next();
+});
+
+app.get('/api/chat/history', requireLogin, (req, res) => {
+  const messages = db.prepare(`
+    SELECT id, display_name, message, created_at
+    FROM chat_messages
+    ORDER BY created_at DESC
+    LIMIT 50
+  `).all();
+
+  res.json(messages.reverse());
+});
+
 app.post('/logout', (req, res) => req.session.destroy(() => res.redirect('/')));
 app.get('/comments', (req, res) => res.render('comments', { comments, user: req.session.user }));
 app.get('/comment/new', (req, res) => {
@@ -406,5 +486,6 @@ app.post('/comment', (req, res) => {
   res.redirect('/comments');
 });
 
-//start server on PORT
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
