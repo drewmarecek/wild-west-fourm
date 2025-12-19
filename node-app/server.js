@@ -225,7 +225,12 @@ app.post('/login', async (req, res) => {
   if (user && user.lockout_until && user.lockout_until > now) {
     logLoginAttempt(db, { username, ip, success: false });
 
-    const unlockTime = new Date(user.lockout_until).toLocaleTimeString();
+    const unlockTime = new Date(user.lockout_until).toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
     return res.render('login', {
       error: `Account locked until ${unlockTime}`
     });
