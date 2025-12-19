@@ -1,19 +1,25 @@
 <h1>Live Chat</h1>
 
+<!-- Chat box and form -->
 <div id="chat-box" style="border:1px solid #ccc; height:300px; overflow-y:scroll; margin-bottom:10px;"></div>
 
+<!-- Message input form -->
 <form id="chat-form">
   <input id="chat-input" autocomplete="off" placeholder="Type a message..." required>
   <button type="submit">Send</button>
 </form>
 
+<!-- Socket.IO client library -->
 <script src="/socket.io/socket.io.js"></script>
 <script>
+
+  //socket.io initialization
   const socket = io();
   const chatBox = document.getElementById("chat-box");
   const form = document.getElementById("chat-form");
   const input = document.getElementById("chat-input");
 
+//render a message in the chat box
 function addMessage(msg) {
   const div = document.createElement("div");
   const time = new Date(msg.created_at).toLocaleTimeString();
@@ -24,6 +30,7 @@ function addMessage(msg) {
   const msgSpan = document.createElement("span");
   msgSpan.textContent = `: ${msg.message}`;
 
+  //assemble the message
   div.append(`[${time}] `);
   div.appendChild(nameSpan);
   div.appendChild(msgSpan);
@@ -32,14 +39,17 @@ function addMessage(msg) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+//load existing chat history
 fetch("/api/chat/history")
     .then(res => res.json())
     .then(messages => {
       messages.forEach(addMessage);
     });
 
+//real time chat updates
 socket.on("chat:new", addMessage);
 
+//send a new chat message
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 

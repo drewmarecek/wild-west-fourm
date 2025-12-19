@@ -5,22 +5,24 @@
 {{#if comments.length}}
   {{#each comments}}
     <div class="comment-card">
+
+      <!-- Author name -->
       <div class="comment-author">
         <a href="/user/{{this.user_id}}/comments" style="color: {{this.name_color}};">
           {{this.display_name}}
         </a>
       </div>
 
+      <!-- Date -->
       <div class="comment-date">
-        <div class="comment-date">
-          {{#if this.updated_at}}
-            Edited {{formatDate this.updated_at}}
-          {{else}}
-            Posted {{formatDate this.created_at}}
-          {{/if}}
-        </div>
+        {{#if this.updated_at}}
+          Edited {{formatDate this.updated_at}}
+        {{else}}
+          Posted {{formatDate this.created_at}}
+        {{/if}}
       </div>
 
+      <!-- Text -->
       {{#if (gt (strlen this.text) 115)}}
         <div class="comment-text">
           {{{substring this.html 0 115}}}...
@@ -38,6 +40,7 @@
         </div>
       {{/if}}
 
+      <!-- Edit and Delete -->
       {{#if (eq ../user.id this.user_id)}}
         <div style="margin-top:8px;">
           <a href="/comment/{{this.id}}/edit" style="margin-right:5px;">
