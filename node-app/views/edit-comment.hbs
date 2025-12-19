@@ -1,0 +1,8 @@
+<h1>Edit Comment</h1>
+
+<form method="POST" action="/comment/{{comment.id}}/edit">
+  <textarea name="text" rows="6" style="width:100%;" required>{{comment.text}}</textarea>
+  <br>
+  <button type="submit">Post</button>
+  <a href="/comments">Cancel</a>
+</form>

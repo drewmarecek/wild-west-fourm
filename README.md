@@ -1,10 +1,10 @@
 Drew Marecek
-11/13/25
+12/18/25
 COS 498
-Midterm
+Final Project
 
 Overview:
-This is a minimal, insecure web fourm that allows users to create accounts, log in via a session cookie and post comments. Users are able to create an account with a password, log in and post comments. The styling and html was done with the help of AI.
+This secure web fourm that allows users to create accounts, log in via a session cookie and post comments. Users are able to create an account with a password, log in and post comments. It includes database persistence, authentication The styling and html was done with the help of AI.
 
 Requirements:
 Node.js 18+

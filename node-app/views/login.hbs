@@ -1,7 +1,7 @@
 <h1>Login</h1>
 
 {{#if error}}
-  <p style="color:red">{{error}}</p>
+  <p style="color:(#87CEEB)">{{error}}</p>
 {{/if}}
 
 <form method="POST" action="/login">
@@ -14,3 +14,4 @@
   <button type="submit">Login</button>
 </form>
 <p>Don't have an account? <a href="/register">Register here</a>.</p>
+<p><a href="/forgot-password">Forgot Password?</a></p>
