@@ -35,9 +35,38 @@ const PORT = process.env.PORT || 3000;
 const db = new Database(path.join(__dirname, 'data', 'app.db'));
 db.pragma('foreign_keys = ON');
 
+console.log("DB PATH (expected):", path.join(__dirname, "data", "app.db"));
+console.log("PRAGMA database_list:", db.prepare("PRAGMA database_list").all());
+console.log("TABLES:", db.prepare(`
+  SELECT name FROM sqlite_master WHERE type='table' ORDER BY name
+`).all());
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  display_name TEXT NOT NULL,
+  text TEXT NOT NULL,
+  html TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER,
+  deleted_at INTEGER,
+  FOREIGN KEY(user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_created_at
+ON comments(created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_comments_user_created_at
+ON comments(user_id, created_at DESC);
+`);
+
 //HTTP and Socket.IO server setup
 const server = http.createServer(app);
 const io = new Server(server);
+
+//trust proxy for session management
+app.set('trust proxy', 1);
 
 //view engine
 app.set('view engine', 'hbs');
@@ -55,7 +84,7 @@ app.engine('hbs', exphbs.engine({
     if (typeof s !== 'string') return '';
     return s.substring(a, b);
   },
-  formatDate: ts => new Date(ts).toLocaleString()
+  formatDate: ts => new Date(ts).toLocaleString("en-US", { timeZone: "America/New_York" })
   }
 }));
 
