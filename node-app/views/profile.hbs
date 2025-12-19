@@ -37,3 +37,16 @@
   <input name="displayName" placeholder="New display name" required>
   <button type="submit">Change Display Name</button>
 </form>
+
+<h3>Profile Appearance</h3>
+
+<form method="POST" action="/profile/color">
+  <label>Display name color:</label><br>
+  <input
+    type="color"
+    name="color"
+    value="{{user.name_color}}"
+  >
+  <br><br>
+  <button type="submit">Save Color</button>
+</form>

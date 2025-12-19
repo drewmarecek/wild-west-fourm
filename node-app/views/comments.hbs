@@ -1,37 +1,60 @@
 <h1>Comments</h1>
 
+<p>Total Comments: {{total}}</p>
+
 {{#if comments.length}}
   {{#each comments}}
     <div class="comment-card">
       <div class="comment-author">
-        <a href="/user/{{this.user_id}}/comments">
+        <a href="/user/{{this.user_id}}/comments" style="color: {{this.name_color}};">
           {{this.display_name}}
         </a>
       </div>
-
+      
       <div class="comment-date">
-        {{this.created_at}}
+        <div class="comment-date">
+          {{#if this.updated_at}}
+            Edited {{formatDate this.updated_at}}
+          {{else}}
+            Posted {{formatDate this.created_at}}
+          {{/if}}
+        </div>
       </div>
 
-      {{#if (gt (strlen this.text) 200)}}
-        <p>{{substring this.text 0 200}}...</p>
+      {{#if (gt (strlen this.text) 115)}}
+        <div class="comment-text">
+          {{{substring this.html 0 115}}}...
+        </div>
+
         <details>
           <summary>Read more</summary>
-          <p>{{this.text}}</p>
+          <div style="margin-left:20px; border-left:2px solid #ccc; padding-left:10px;">
+            {{{this.html}}}
+          </div>
         </details>
       {{else}}
-        <p>{{this.text}}</p>
+        <div class="comment-text">
+          {{{this.html}}}
+        </div>
       {{/if}}
+
 
       {{#if (eq ../user.id this.user_id)}}
-        <a href="/comment/{{this.id}}/edit">
-          <button type="button">Edit</button>
-        </a>
+        <div style="margin-top:8px;">
+          <a href="/comment/{{this.id}}/edit" style="margin-right:5px;">
+            <button type="button">Edit</button>
+          </a>
 
-        <form method="POST" action="/comment/{{this.id}}/delete">
-          <button>Delete</button>
-        </form>
+          <form method="POST"
+                action="/comment/{{this.id}}/delete"
+                style="display:inline;">
+            <button>Delete</button>
+          </form>
+        </div>
       {{/if}}
+
+      <hr style="margin-top:15px; margin-bottom:15px;">
+
     </div>
   {{/each}}
 {{else}}

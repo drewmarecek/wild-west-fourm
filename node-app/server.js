@@ -6,6 +6,12 @@ const path = require('path');
 const Database = require('better-sqlite3');
 const http = require('http');
 const { Server } = require('socket.io');
+const marked = require('marked');
+
+marked.setOptions({
+  mangle: false,
+  headerIds: false
+});
 
 const {
   validatePasswordStrength,
@@ -16,6 +22,7 @@ const {
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000;
 const crypto = require('crypto');
+const { timeStamp } = require('console');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -35,7 +42,11 @@ app.engine('hbs', exphbs.engine({
   decrement: v => v - 1,
   strlen: s => s.length,
   gt: (a, b) => a > b,
-  substring: (s, a, b) => s.substring(a, b)
+  substring: (s, a, b) => {
+    if (typeof s !== 'string') return '';
+    return s.substring(a, b);
+  },
+  formatDate: ts => new Date(ts).toLocaleString()
   }
 }));
 
@@ -63,7 +74,7 @@ function requireLogin(req, res, next) {
 
 function renderProfile(req, res, extra = {}) {
   const user = db.prepare(`
-    SELECT username, email, display_name
+    SELECT username, email, display_name, name_color
     FROM users
     WHERE id = ?
   `).get(req.session.user.id);
@@ -156,6 +167,19 @@ app.post('/profile/password', requireLogin, async (req, res) => {
   req.session.destroy(() => res.redirect('/login'));
 });
 
+app.post('/profile/color', requireLogin, (req, res) => {
+  const color = req.body.color;
+
+  db.prepare(`
+    UPDATE users
+    SET name_color = ?
+    WHERE id = ?
+  `).run(color, req.session.user.id);
+
+  req.session.user.name_color = color;
+  res.redirect('/profile');
+});
+
 app.post('/register', async (req, res) => {
   const { username, email, displayName, password } = req.body;
 
@@ -218,9 +242,19 @@ app.post('/profile/email', requireLogin, async (req, res) => {
     return renderProfile(req, res, { error: "Email and password required" });
   }
 
-  const user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(req.session.user.id);
+  const user = db.prepare(`
+    SELECT id, password_hash
+    FROM users 
+    WHERE id = ?
+  `).get(req.session.user.id);
 
+  if (!user || !user.password_hash) {
+    return renderProfile(req, res, {
+      error: "Session error. Please log in again."
+    });
+  }
   const valid = await verifyPassword(user.password_hash, currentPassword);
+
   if (!valid) {
     return renderProfile(req, res, { error: "Current password incorrect" });
   }
@@ -348,7 +382,9 @@ app.post('/reset-password', async (req, res) => {
     WHERE id = ?
   `).run(newHash, Date.now(), user.id);
 
-  res.redirect('/login');
+  res.render('login', {
+    message: "Password reset successful. Please log in with your new password."
+  });
 });
 
 app.post('/api/chat/message', requireLogin, (req, res) => {
@@ -361,16 +397,18 @@ app.post('/api/chat/message', requireLogin, (req, res) => {
   const chatMessage = {
     user_id: req.session.user.id,
     display_name: req.session.user.displayName,
+    name_color: req.session.user.name_color,
     message: message.trim(),
     created_at: Date.now()
   };
 
   const result = db.prepare(`
-    INSERT INTO chat_messages (user_id, display_name, message, created_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO chat_messages (user_id, display_name, name_color, message, created_at)
+    VALUES (?, ?, ?, ?, ?)
   `).run(
     chatMessage.user_id,
     chatMessage.display_name,
+    chatMessage.name_color,
     chatMessage.message,
     chatMessage.created_at
   );
@@ -439,7 +477,8 @@ app.post('/login', async (req, res) => {
   req.session.user = {
     id: user.id,
     username: user.username,
-    displayName: user.display_name
+    displayName: user.display_name,
+    name_color: user.name_color
   };
 
   res.redirect('/comments');
@@ -467,28 +506,20 @@ io.use((socket, next) => {
 });
 
 io.use((socket, next) => {
-  const session = socket.request.session;
-
-  if (!session || !session.user) {
+  if (!socket.request.session?.user) {
     return next(new Error("Not authenticated"));
   }
-
   next();
 });
 
 io.on("connection", (socket) => {
-  const user = socket.request.session.user;
-
-  console.log(`User connected to chat: ${user.displayName}`);
-
-  socket.on("disconnect", () => {
-    console.log(`User disconnected: ${user.displayName}`);
-  });
+  console.log("SOCKET CONNECTED:", socket.request.session.user.displayName);
 });
+
 
 app.get('/api/chat/history', requireLogin, (req, res) => {
   const messages = db.prepare(`
-    SELECT id, display_name, message, created_at
+    SELECT id, display_name, name_color, message, created_at
     FROM chat_messages
     ORDER BY created_at DESC
     LIMIT 50
@@ -511,10 +542,13 @@ app.get('/comments', (req, res) => {
   `).get().count;
 
   const comments = db.prepare(`
-    SELECT *
+    SELECT 
+      comments.*,
+      users.name_color
     FROM comments
-    WHERE deleted_at IS NULL
-    ORDER BY created_at DESC
+    JOIN users ON users.id = comments.user_id
+    WHERE comments.deleted_at IS NULL
+    ORDER BY comments.created_at DESC
     LIMIT ? OFFSET ?
   `).all(pageSize, offset);
 
@@ -522,6 +556,7 @@ app.get('/comments', (req, res) => {
 
   res.render('comments', {
     comments,
+    total,
     page,
     totalPages,
     hasPrev: page > 1,
@@ -547,23 +582,26 @@ app.get('/comment/:id/edit', requireLogin, (req, res) => {
 });
 
 app.post('/comment', requireLogin, (req, res) => {
-  const text = req.body.text?.trim();
+  const rawText = req.body.text?.trim();
 
-  if (!text) {
+  if (!rawText) {
     return res.render('new-comment', { error: "Comment cannot be empty" });
   }
 
-  if (text.length > 2000) {
+  if (rawText.length > 2000) {
     return res.render('new-comment', { error: "Comment too long" });
   }
 
+  const html = marked.parse(rawText);
+
   db.prepare(`
-    INSERT INTO comments (user_id, display_name, text, created_at)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO comments (user_id, display_name, text, html, created_at)
+    VALUES (?, ?, ?, ?, ?)
   `).run(
     req.session.user.id,
     req.session.user.displayName,
-    text,
+    rawText,
+    html,
     Date.now()
   );
 
@@ -586,18 +624,20 @@ app.post('/comment/:id/delete', requireLogin, (req, res) => {
 
 //edit comment
   app.post('/comment/:id/edit', requireLogin, (req, res) => {
-    const text = req.body.text?.trim();
-
-    if (!text || text.length > 2000) {
+    const rawText = req.body.text?.trim();
+    if (!rawText || rawText.length > 2000) {
       return res.redirect('/comments');
     }
 
+    const html = marked.parse(rawText);
+
   db.prepare(`
     UPDATE comments
-    SET text = ?, updated_at = ?
+    SET text = ?, html = ?, updated_at = ?
     WHERE id = ? AND user_id = ?
   `).run(
-    text,
+    rawText,
+    html,
     Date.now(),
     req.params.id,
     req.session.user.id

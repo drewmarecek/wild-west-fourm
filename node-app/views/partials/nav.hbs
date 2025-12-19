@@ -5,7 +5,9 @@
   {{#if user}}
     <a href="/profile">Profile</a> |
     <a href="/chat">Chat</a> |
-    Logged in as {{displayName}} |
+    <span style="color: {{user.nameColor}}">
+      Logged in as {{user.displayName}}
+    </span> |
     <form method="POST" action="/logout" style="display:inline">
       <button>Logout</button>
     </form>
