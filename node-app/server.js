@@ -48,8 +48,11 @@ const sessionMiddleware = session({
   saveUninitialized: false
 });
 app.use(sessionMiddleware);
-app.use((req, res, next) => {res.locals.user = req.session.user; 
-next();});
+app.use((req, res, next) => {
+  res.locals.user = req.session.user;
+  res.locals.displayName = req.session.user?.displayName || null;
+  next();
+});
 
 function requireLogin(req, res, next) {
   if (!req.session.user) {
@@ -529,6 +532,18 @@ app.get('/comments', (req, res) => {
 app.get('/comment/new', (req, res) => {
   if (!req.session.user) return res.render('login', { error: 'Please log in first' });
   res.render('new-comment');
+});
+
+app.get('/comment/:id/edit', requireLogin, (req, res) => {
+  const comment = db.prepare(`
+    SELECT *
+    FROM comments
+    WHERE id = ? AND user_id = ? AND deleted_at IS NULL
+  `).get(req.params.id, req.session.user.id);
+
+  if (!comment) return res.redirect('/comments');
+
+  res.render('edit-comment', { comment });
 });
 
 app.post('/comment', requireLogin, (req, res) => {

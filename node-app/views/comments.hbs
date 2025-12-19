@@ -24,10 +24,9 @@
       {{/if}}
 
       {{#if (eq ../user.id this.user_id)}}
-        <form method="POST" action="/comment/{{this.id}}/edit">
-          <input name="text" value="{{this.text}}">
-          <button>Edit</button>
-        </form>
+        <a href="/comment/{{this.id}}/edit">
+          <button type="button">Edit</button>
+        </a>
 
         <form method="POST" action="/comment/{{this.id}}/delete">
           <button>Delete</button>

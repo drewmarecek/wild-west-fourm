@@ -3,7 +3,8 @@
   <a href="/comments">Comments</a> |
 
   {{#if user}}
-    Logged in as {{user}} |
+    <a href="/profile">Profile</a> |
+    Logged in as {{displayName}} |
     <form method="POST" action="/logout" style="display:inline">
       <button>Logout</button>
     </form>
